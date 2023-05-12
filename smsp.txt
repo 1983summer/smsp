@@ -1,0 +1,48 @@
+clear;
+clc;
+%% 常数
+C = 299792458;  %电磁波速度
+
+Fc = 50e6;      %载频
+Fs=500e6;       %采样频率hz
+Tr = 20e-6;     %脉宽
+
+PRI = 100e-6;           %脉冲重复时间
+Br = 30e6;              %带宽
+
+Kr = Br/Tr;             %调频斜率
+
+%% 生成发射信号
+Nr  = round(Fs*PRI);                          % 一帧信号的长度，包含多个脉冲以及它们之间的间隔的时间长度
+Nfast = round(Fs*Tr);                         % 脉宽长度
+tfast_sor = (-Nfast/2:(Nfast/2 - 1))/Fs;      % 脉内的快时间序列                                         
+
+N =3;                                         % 压缩倍数
+k =N*Kr;                                      % SMSP信号子波形的调频斜率
+tfast_sor_n = tfast_sor(1:N:end); 
+Source = [exp(1j*(2*pi*Fc*tfast_sor_n+pi*Kr*(tfast_sor_n).^2)), zeros(1,Nr-length(tfast_sor_n))];
+H = zeros(1,Nr);
+for i=1:N
+    td = (i-1)*length(tfast_sor_n)+1;
+    H(td) = 1;
+end
+J = ifft(fft(H).*fft(Source));
+t = linspace(0,PRI,PRI*Fs);
+figure(4),
+plot(t,real(J))
+xlabel('时间')
+title('噪声卷积干扰时域')
+figure(5),
+f = linspace(-Fs/2,Fs/2,Nr);
+plot(f,abs(fftshift(fft(J))))
+xlabel('频率')
+title('噪声卷积干扰频域')
+
+h = hamming(128);
+[S,F,T]=spectrogram(J,h,127,128,Fs);
+f = linspace(-Fs/2,Fs/2,128);
+figure(6),
+imagesc(T,f,abs(fftshift(S,1)));
+xlabel('时间')
+ylabel('频率')
+title('噪声卷积干扰时频图')
